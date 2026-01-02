@@ -1,0 +1,9 @@
+{
+  "notes_id": "9b154c79-90d7-40b6-ac1b-1d6147c2abc3",
+  "book_ids": [
+    "book_20260103_034616_2207894833872"
+  ],
+  "content": "```markdown\n# 企业编程已死 | Tsoding 视频学习笔记\n\n---\n\n## 一、核心知识点总结\n1. **企业编程的局限性**  \n   - 传统企业编程模式（如办公室协作、固定流程）已逐渐失去效率优势  \n   - 远程工作（Remote Work）改变了团队协作逻辑，强调结果而非过程  \n   - 企业编程过度依赖流程和工具，可能抑制创造力  \n\n2. **编程本质的重新定义**  \n   - 编程 ≠ 软件开发（Software Development）  \n   - 核心在于解决问题与创造功能，而非遵循企业规范  \n   - 个人项目（Personal Projects）和开源协作更能体现编程价值  \n\n3. **职业发展建议**  \n   - 避免混淆“编程”与“企业流程管理”  \n   - 通过独立开发（Indie Development）或自由职业（Freelancing）提升技术深度  \n   - 关注技术趋势（如AI工具、低代码平台）对行业的影响  \n\n---\n\n## 二、关键概念解释\n| 概念 | 解释 |\n|------|------|\n| **企业编程** | 传统企业中的标准化开发流程，强调文档、会议和分工协作，可能牺牲效率 |\n| **Road Componile** | （疑似术语误译）可能指企业中复杂的构建流程或依赖管理问题 |\n| **Perkne Workin** | （疑似术语误译）可能指远程工作中的灵活性或个性化工作安排 |\n| **Indie Development** | 独立开发，指个人或小团队自主开发产品并直接面向用户 |\n\n---\n\n## 三、学习要点梳理\n1. **理解企业编程的矛盾**  \n   - 分析企业流程（如敏捷开发、代码审查）的利弊  \n   - 探讨远程协作对团队动态的影响  \n\n2. **区分编程与软件开发**  \n   - 编程：解决具体问题的技术实现  \n   - 软件开发：包含需求分析、项目管理、交付等全流程  \n\n3. **实践独立开发的价值**  \n   - 通过开源项目或个人项目积累真实经验  \n   - 学习如何在没有企业支持的情况下完成产品迭代  \n\n---\n\n## 四、实践建议\n1. **技能提升**  \n   - 掌握至少一种全栈开发技术（如Node.js + React）  \n   - 学习自动化工具（CI/CD、容器化）减少企业流程依赖  \n\n2. **职业规划**  \n   - 定期评估当前工作是否偏离编程本质  \n   - 参与技术社区（如GitHub、Stack Overflow）保持行业敏感度  \n\n3. **工具推荐**  \n   - **远程协作**：Notion（文档管理）、Zoom（视频会议）  \n   - **独立开发**：Figma（原型设计）、Vercel（部署平台）  \n\n---\n\n## 五、相关资源链接\n1. 视频原文：[企业编程已死 | Tsoding](https://www.bilibili.com/video/BV1BDiKBuEAZ)  \n2. 相关阅读：  \n   - [《The Pragmatic Programmer》](https://pragprog.com/titles/tpp20/the-pragmatic-programmer-20th-anniversary-edition/)  \n   - [Remote Work Best Practices](https://remote.co/)  \n3. 工具推荐：  \n   - [GitHub](https://github.com)（代码托管）  \n   - [Notion](https://www.notion.so)（知识管理）  \n\n---\n\n**注**：视频内容部分信息因原文字幕模糊存在不确定性，建议结合视频原文二次验证关键概念。\n```",
+  "user_prompt": "食屎",
+  "created_at": "2026-01-03T04:30:37.047076"
+}

@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>笔记库 - Milano Library</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .navbar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .navbar-brand {
+            font-weight: bold;
+            color: white !important;
+        }
+        .navbar-brand:hover {
+            color: #f0f0f0 !important;
+        }
+        .nav-link {
+            color: white !important;
+        }
+        .nav-link:hover {
+            color: #f0f0f0 !important;
+        }
+        .search-container {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .search-input {
+            border: 2px solid #667eea;
+            border-radius: 25px;
+            padding: 10px 20px;
+            width: 100%;
+            font-size: 16px;
+        }
+        .search-input:focus {
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.3);
+        }
+        .notes-card {
+            background: white;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+        }
+        .notes-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+        .notes-card.selected {
+            border: 3px solid #667eea;
+            background-color: #f0f4ff;
+        }
+        .notes-card-checkbox {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            z-index: 10;
+        }
+        .notes-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+            padding-right: 30px;
+        }
+        .notes-content {
+            color: #666;
+            font-size: 14px;
+            margin-bottom: 10px;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .notes-date {
+            color: #999;
+            font-size: 12px;
+        }
+        .notes-stats {
+            display: flex;
+            gap: 15px;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #eee;
+        }
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 13px;
+            color: #666;
+        }
+        .stat-badge {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 11px;
+        }
+        .delete-btn {
+            background: #dc3545;
+            border: none;
+            color: white;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        .delete-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 15px rgba(220, 53, 69, 0.4);
+        }
+        .delete-btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .selected-count {
+            background: #667eea;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .no-notes {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+        .no-notes i {
+            font-size: 60px;
+            margin-bottom: 20px;
+            color: #ddd;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+        }
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg">
+        <div class="container">
+            <a class="navbar-brand" href="/">Milano Library</a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="/">首页</a>
+                <a class="nav-link" href="/books">视频库</a>
+                <a class="nav-link" href="/notes">笔记管理</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-12">
+                <h2 class="mb-4">笔记库</h2>
+                
+                <div class="search-container">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <input type="text" class="search-input" id="searchInput" placeholder="搜索笔记标题...">
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <span class="selected-count" id="selectedCount">已选择 0 个</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="notesContainer">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        <p>加载中...</p>
+                    </div>
+                </div>
+
+                <div class="text-center mt-4" id="deleteSection" style="display: none;">
+                    <button class="delete-btn" id="deleteBtn" onclick="deleteSelectedNotes()">
+                        删除选中笔记
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let allNotes = [];
+        let selectedNotes = new Set();
+
+        function loadNotes() {
+            fetch('/api/notes')
+                .then(response => response.json())
+                .then(data => {
+                    allNotes = data.notes;
+                    displayNotes(allNotes);
+                })
+                .catch(error => {
+                    console.error('加载笔记失败:', error);
+                    document.getElementById('notesContainer').innerHTML = `
+                        <div class="no-notes">
+                            <i>📝</i>
+                            <p>加载失败，请刷新页面重试</p>
+                        </div>
+                    `;
+                });
+        }
+
+        function displayNotes(notes) {
+            const container = document.getElementById('notesContainer');
+            
+            if (notes.length === 0) {
+                container.innerHTML = `
+                    <div class="no-notes">
+                        <i>📝</i>
+                        <p>暂无生成的笔记</p>
+                        <a href="/books" class="btn btn-primary mt-3">前往视频库生成笔记</a>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = notes.map(note => {
+                const isSelected = selectedNotes.has(note.notes_id) ? 'selected' : '';
+                const isChecked = selectedNotes.has(note.notes_id) ? 'checked' : '';
+                const title = escapeHtml(note.content.substring(0, 100)) || '无标题';
+                const content = escapeHtml(note.content.substring(0, 200)) + '...';
+                const date = formatDate(note.created_at);
+                
+                return `
+                <div class="notes-card ${isSelected}" 
+                     onclick="viewNote('${note.notes_id}')"
+                     data-note-id="${note.notes_id}">
+                    <input type="checkbox" 
+                           class="notes-card-checkbox" 
+                           ${isChecked}
+                           onclick="event.stopPropagation(); toggleNoteSelection('${note.notes_id}', event)">
+                    <div class="notes-title">${title}</div>
+                    <div class="notes-content">${content}</div>
+                    <div class="notes-date">创建时间: ${date}</div>
+                    <div class="notes-stats">
+                        <div class="stat-item">
+                            <span class="stat-badge">ID</span>
+                            <span>${note.notes_id}</span>
+                        </div>
+                    </div>
+                </div>
+                `;
+            }).join('');
+        }
+
+        function toggleNoteSelection(noteId, event) {
+            if (selectedNotes.has(noteId)) {
+                selectedNotes.delete(noteId);
+            } else {
+                selectedNotes.add(noteId);
+            }
+            updateSelectedCount();
+            displayNotes(getFilteredNotes());
+        }
+
+        function updateSelectedCount() {
+            const count = selectedNotes.size;
+            document.getElementById('selectedCount').textContent = `已选择 ${count} 个`;
+            document.getElementById('deleteSection').style.display = count > 0 ? 'block' : 'none';
+        }
+
+        function getFilteredNotes() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            return allNotes.filter(note => 
+                note.content.toLowerCase().includes(searchTerm)
+            );
+        }
+
+        function viewNote(noteId) {
+            window.location.href = `/notes/${noteId}`;
+        }
+
+        function deleteSelectedNotes() {
+            if (selectedNotes.size === 0) {
+                alert('请先选择要删除的笔记');
+                return;
+            }
+
+            if (!confirm(`确定要删除选中的 ${selectedNotes.size} 个笔记吗？`)) {
+                return;
+            }
+
+            const noteIds = Array.from(selectedNotes);
+            const deletePromises = noteIds.map(noteId => 
+                fetch(`/api/notes/${noteId}`, {
+                    method: 'DELETE'
+                })
+            );
+
+            Promise.all(deletePromises)
+                .then(responses => {
+                    // 重新加载笔记列表
+                    selectedNotes.clear();
+                    loadNotes();
+                    updateSelectedCount();
+                    alert(`成功删除 ${noteIds.length} 个笔记`);
+                })
+                .catch(error => {
+                    console.error('删除笔记失败:', error);
+                    alert('删除笔记失败，请重试');
+                });
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleString('zh-CN');
+        }
+
+        document.getElementById('searchInput').addEventListener('input', function() {
+            displayNotes(getFilteredNotes());
+        });
+
+        loadNotes();
+    </script>
+</body>
+</html>
