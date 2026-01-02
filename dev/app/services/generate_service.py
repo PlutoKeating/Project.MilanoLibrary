@@ -175,13 +175,13 @@ class GenerateService:
                 ],
                 temperature=0.3,
                 max_tokens=2000,
-                enable_thinking=False
+                stream=True
             )
             
-            return {
-                "success": True,
-                "analysis": response.choices[0].message.content
-            }
+            # 流式返回分析结果
+            for chunk in response:
+                if chunk.choices[0].delta.content is not None:
+                    yield chunk.choices[0].delta.content
         except Exception as e:
             print(f"结构分析失败：{str(e)}")
             return {

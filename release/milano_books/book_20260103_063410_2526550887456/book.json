@@ -1,0 +1,186 @@
+{
+  "book_id": "book_20260103_063410_2526550887456",
+  "title": "小到可以烧饭的“火山”",
+  "author": "正经的知识",
+  "source_url": "https://www.bilibili.com/video/BV11p4y1d7wq",
+  "created_at": "2026-01-03T06:34:10.235800",
+  "paragraphs": [
+    {
+      "type": "Paragraph",
+      "start_time": 0.0,
+      "end_time": 28.82,
+      "text_content": "正解个知识的 世界上最小的火山是不自卡火山 准确地说只是一个火焰喷泉 不是真正意义上的火山 它只有1米多高 但它已经喷射了上百年的火焰了 最早正式的文现可以追溯到1577年 火焰是由于火山下面一直在排除贪清化核物 和养急接触常年保持了燃烧状态 在二战期间还曾没有用于小型的碰冷和生产 之前还有计划收集并使用着下面的天然机 但后来放弃了",
+      "multi_modal_data": {
+        "type": "semantic_slice",
+        "video_url": "https://www.bilibili.com/video/BV11p4y1d7wq",
+        "slice_index": 0,
+        "total_slices": 2,
+        "sentences_count": 12,
+        "video_metadata": {
+          "view_count": 819199,
+          "like_count": 75870,
+          "tags": [
+            "地理",
+            "自然",
+            "科普",
+            "科学",
+            "火山"
+          ]
+        }
+      }
+    },
+    {
+      "type": "Paragraph",
+      "start_time": 28.82,
+      "end_time": 32.86,
+      "text_content": "现在是一个旅路景点 嗯真景的知识又增加了",
+      "multi_modal_data": {
+        "type": "semantic_slice",
+        "video_url": "https://www.bilibili.com/video/BV11p4y1d7wq",
+        "slice_index": 1,
+        "total_slices": 2,
+        "sentences_count": 2,
+        "video_metadata": {
+          "view_count": 819199,
+          "like_count": 75870,
+          "tags": [
+            "地理",
+            "自然",
+            "科普",
+            "科学",
+            "火山"
+          ]
+        }
+      }
+    }
+  ],
+  "items": [
+    {
+      "type": "StuffList",
+      "name": "视频内容列表",
+      "description": "按顺序排列的视频内容切片",
+      "content": [
+        {
+          "type": "Paragraph",
+          "start_time": 0.0,
+          "end_time": 28.82,
+          "text_content": "正解个知识的 世界上最小的火山是不自卡火山 准确地说只是一个火焰喷泉 不是真正意义上的火山 它只有1米多高 但它已经喷射了上百年的火焰了 最早正式的文现可以追溯到1577年 火焰是由于火山下面一直在排除贪清化核物 和养急接触常年保持了燃烧状态 在二战期间还曾没有用于小型的碰冷和生产 之前还有计划收集并使用着下面的天然机 但后来放弃了",
+          "multi_modal_data": {
+            "type": "semantic_slice",
+            "video_url": "https://www.bilibili.com/video/BV11p4y1d7wq",
+            "slice_index": 0,
+            "total_slices": 2,
+            "sentences_count": 12,
+            "video_metadata": {
+              "view_count": 819199,
+              "like_count": 75870,
+              "tags": [
+                "地理",
+                "自然",
+                "科普",
+                "科学",
+                "火山"
+              ]
+            }
+          }
+        },
+        {
+          "type": "Paragraph",
+          "start_time": 28.82,
+          "end_time": 32.86,
+          "text_content": "现在是一个旅路景点 嗯真景的知识又增加了",
+          "multi_modal_data": {
+            "type": "semantic_slice",
+            "video_url": "https://www.bilibili.com/video/BV11p4y1d7wq",
+            "slice_index": 1,
+            "total_slices": 2,
+            "sentences_count": 2,
+            "video_metadata": {
+              "view_count": 819199,
+              "like_count": 75870,
+              "tags": [
+                "地理",
+                "自然",
+                "科普",
+                "科学",
+                "火山"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "type": "Timeline",
+      "name": "视频时间线",
+      "description": "按时间顺序排列的视频内容",
+      "content": [
+        [
+          0.0,
+          {
+            "type": "Paragraph",
+            "start_time": 0.0,
+            "end_time": 28.82,
+            "text_content": "正解个知识的 世界上最小的火山是不自卡火山 准确地说只是一个火焰喷泉 不是真正意义上的火山 它只有1米多高 但它已经喷射了上百年的火焰了 最早正式的文现可以追溯到1577年 火焰是由于火山下面一直在排除贪清化核物 和养急接触常年保持了燃烧状态 在二战期间还曾没有用于小型的碰冷和生产 之前还有计划收集并使用着下面的天然机 但后来放弃了",
+            "multi_modal_data": {
+              "type": "semantic_slice",
+              "video_url": "https://www.bilibili.com/video/BV11p4y1d7wq",
+              "slice_index": 0,
+              "total_slices": 2,
+              "sentences_count": 12,
+              "video_metadata": {
+                "view_count": 819199,
+                "like_count": 75870,
+                "tags": [
+                  "地理",
+                  "自然",
+                  "科普",
+                  "科学",
+                  "火山"
+                ]
+              }
+            }
+          }
+        ],
+        [
+          28.82,
+          {
+            "type": "Paragraph",
+            "start_time": 28.82,
+            "end_time": 32.86,
+            "text_content": "现在是一个旅路景点 嗯真景的知识又增加了",
+            "multi_modal_data": {
+              "type": "semantic_slice",
+              "video_url": "https://www.bilibili.com/video/BV11p4y1d7wq",
+              "slice_index": 1,
+              "total_slices": 2,
+              "sentences_count": 2,
+              "video_metadata": {
+                "view_count": 819199,
+                "like_count": 75870,
+                "tags": [
+                  "地理",
+                  "自然",
+                  "科普",
+                  "科学",
+                  "火山"
+                ]
+              }
+            }
+          }
+        ]
+      ]
+    },
+    {
+      "type": "RelationGraph",
+      "name": "内容关系图",
+      "description": "视频内容之间的逻辑关系",
+      "nodes_count": 2,
+      "edges_count": 1,
+      "content": [],
+      "edge_types": [
+        "顺序"
+      ]
+    }
+  ]
+}
