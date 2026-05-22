@@ -1,0 +1,15 @@
+include:
+  - path: ./backend/docker-compose.yml
+  - path: ./frontend/docker-compose.yml
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: milanolibrary-redis
+    ports:
+      - 6379:6379
+    volumes:
+      - redis-data:/data
+
+volumes:
+  redis-data:

@@ -1,0 +1,61 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc / OS-specific
+.DS_Store
+*.pem
+Thumbs.db
+desktop.ini
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# local env files (Secured)
+.env
+.env*.local
+.env.*
+!.env.example
+.idea/
+.vscode/
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# Sentry
+.sentryclirc
+
+# Sentry
+next.config.original.js
+
+# python backend (In case of root Docker builds)
+backend/venv/
+backend/.venv/
+backend/models/
+backend/whisper_models/
+backend/storage/segments/*
+backend/storage/videos/*
+
+# lockfile
+pnpm-lock.yaml
+yarn.lock

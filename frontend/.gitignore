@@ -1,0 +1,28 @@
+# dependencies
+node_modules/
+
+# next.js
+.next/
+out/
+
+# production
+build/
+
+# env files
+.env
+.env*.local
+.env.*
+!.env.example
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+
+# IDE & deployment
+.idea/
+.vscode/
+.vercel/
+
+# OS-specific
+.DS_Store
+Thumbs.db

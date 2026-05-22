@@ -1,0 +1,19 @@
+node_modules
+.next
+out
+build
+*.log
+
+# Environment variables (Secured)
+.env
+.env*.local
+.env.*
+!.env.example
+
+# IDE settings
+.idea
+.vscode
+
+# OS-specific
+.DS_Store
+Thumbs.db

@@ -1,0 +1,40 @@
+# Python virtual environments (Prevent massive build contexts!)
+venv/
+.venv/
+env/
+ENV/
+
+# Python cache and compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Whisper models & Local weights (AVOID transferring gigabytes to daemon)
+models/
+whisper_models/
+
+# Local database/runtime storage
+storage/videos/*
+!storage/videos/.gitkeep
+storage/segments/*
+!storage/segments/.gitkeep
+
+# Secrets / Environment configs (Secured)
+.env
+.env.*
+!.env.example
+
+# IDE configurations
+.idea/
+.vscode/
+
+# OS-specific garbage files
+.DS_Store
+Thumbs.db
+desktop.ini

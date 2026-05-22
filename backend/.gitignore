@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.venv/
+venv/
+env/
+ENV/
+
+# Python Testing & Caches
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Environment
+.env
+.env.local
+.env.*
+!.env.example
+
+# Whisper models
+models/
+whisper_models/
+
+# Runtime storage
+storage/videos/*
+storage/segments/*
+!storage/videos/.gitkeep
+!storage/segments/.gitkeep
+
+# IDE
+.idea/
+.vscode/
+
+# OS-specific
+.DS_Store
+Thumbs.db
