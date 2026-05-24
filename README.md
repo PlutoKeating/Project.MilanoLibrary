@@ -1,5 +1,5 @@
 <div align="center">
-  <h1>Milano Library</h1>
+  <h1>Project.MilanoLibrary</h1>
   <strong>Database-less Video Vault & Recomposition Compiler</strong><br />
   一个复古未来主义极简风格的、无数据库、本地优先视频知识重组编译器与 Obsidian 原生知识库。
 </div>
