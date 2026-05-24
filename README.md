@@ -1,69 +1,111 @@
-# Project.MilanoLibrary
+# 🌌 MilanoLibrary
 
-复古未来主义极简风格的 AI 视频与本地媒体总结工具。支持 Bilibili、YouTube 视频链接，以及本地视频/音频文件上传总结。内置本地 Whisper 语音转录引擎。
+<p align="center">
+  <strong>Database-less Video Vault & Recomposition Compiler</strong><br />
+  一个复古未来主义极简风格的、无数据库、本地优先视频知识重组编译器与 Obsidian 原生知识库。
+</p>
 
-## 核心特性
-
-- **多平台支持**：支持 Bilibili 视频、YouTube 视频、播客、本地视频（`local-video`）及本地音频（`local-audio`）的一键总结。
-- **混合转录引擎**：支持在线 OpenAI Whisper API；同时内置本地 `faster-whisper` 离线转录引擎作为 Fallback 或纯离线运行。
-- **本地模型管理**：提供本地 Whisper 模型（`tiny`, `base`, `small`, `medium`, `large-v3`）的在线一键下载与进度查询 API。
-- **流式输出**：支持极速的 LLM 总结流式渲染，字字可见。
-- **结构化总结**：基于 JSON Schema 结构化输出（Structured Outputs），确保大模型输出的稳定结构。
-- **章节感知**：支持自动解析 YouTube 描述章节、Bilibili 多 P 结构，并支持通过 LLM 从字幕中智能检测视频章节大纲。
-- **复古未来设计**：暗黑极简像素风、JetBrains Mono 字体、无圆角、无玻璃态、无冗余动画。
-
----
-
-## 架构
-
-```
-┌─────────────┐      HTTP/API       ┌─────────────┐
-│   前端      │ ◄─────────────────► │   后端      │
-│  Next.js    │   /api/summarize    │   FastAPI   │
-│  (React)    │   /api/video/upload │   (Python)  │
-└─────────────┘                     └─────────────┘
-                                           │
-                                    ┌──────┴────────────────┐
-                                    │ ├─ OpenAI / 兼容 API   │
-                                    │ ├─ Bilibili/YouTube   │
-                                    │ ├─ 本地 faster-whisper│
-                                    │ └─ Redis (缓存)        │
-                                    └───────────────────────┘
-```
+<p align="center">
+  <a href="#-paradigm-shift"><strong>设计范式</strong></a> ·
+  <a href="#-core-features"><strong>核心特性</strong></a> ·
+  <a href="#-compilation-pipeline"><strong>工作原理</strong></a> ·
+  <a href="#-quick-start"><strong>快速开始</strong></a> ·
+  <a href="./docs/API.md"><strong>API 规范</strong></a> ·
+  <a href="./docs/ARCHITECTURE.md"><strong>架构 spec</strong></a>
+</p>
 
 ---
 
-## 快速开始
+## 💡 Paradigm Shift (设计范式)
 
-### 1. 配置环境变量
+现有的视频总结工具大多止步于“总结生成”：将大模型的平铺段落输出到关系型数据库中，难以二次沉淀。**MilanoLibrary** 带来了全新的设计范式：
+
+*   **Database-less (无数据库化)**
+    摆脱传统数据库束缚，完全基于物理文件系统。所有提炼数据均以符合规范的 `book.json`、`index.json`、`complete.md` 和单独段落 `.md` 文件夹形式存储。数据资产 100% 归属用户。
+*   **Obsidian-Native (Obsidian 原生适配)**
+    你的书籍根目录即是一个标准的 Obsidian 库 (Vault)。生成的 MilanoBook 与 `.notes` 智能笔记原生完美融入你的双链知识网，支持无缝检索、编辑与链接引用。
+*   **Logical Slicing & Recomposition (逻辑分片与重组)**
+    摒弃传统的 FFmpeg 物理切割。在内存中通过高精度时间戳范围对字幕进行无损逻辑切片，在保留音视频原有上下文完整性的前提下，实现多线程、超高并发的叶子章节学术级提炼与深度优先重组。
+
+---
+
+## ✨ Core Features (核心特性)
+
+| 特性 | 机制 | 业务优势 |
+| :--- | :--- | :--- |
+| **多源多平台接入** | 内置 YouTube/Bilibili 适配器 + 拖拽视音频上传 | 无论是公开讲演、技术分享还是本地录音，一网打尽 |
+| **自定义适配器** | 插件化 `.py` 热插拔架构，支持前端实时上传/删除 | 开发者可秒级编写并注入任意新音视频平台的视频源抓取服务 |
+| **三阶段智能编译** | 大纲建模（Phase 1）→ 并行提炼（Phase 2）→ 递归拼装（Phase 3） | 彻底消除废话与低智重叠，生成包含 LaTeX 公式、标准代码块的学术级书籍 |
+| **跨书交叉整合** | 一键多选 MilanoBooks + 综合提示词指示 | 大模型深度重构多视频，提炼异同点与技术路线图，自动编译为系统化笔记 |
+| **双向交互阅读器** | 等宽树状目录、精准 Sentence 跳转、嵌入式 HTML5 播放器 | 正文 `[MM:SS]` 精准时间戳可一键点击定位媒体播放，实现深度互动阅读 |
+| **本地 STT 引擎** | 在线 Whisper 接口 + 本地 `faster-whisper` (CTranslate2) 自动回退 | 无网、无 key 状态下自动启动本地硬件推理加速转录，提供模型一键式下载 |
+
+---
+
+## 🛠️ Compilation Pipeline (工作原理)
+
+MilanoLibrary 将视频的“存”与“重组”抽象为一条高度自动化的后台编译流水线：
+
+```
+                    [ 1. Ingest & Analyze ]
+            从在线 URL 或本地上传中提取高精度音轨与元数据
+                               │
+                               ▼
+                   [ 2. Resolve Transcript ]
+             获取在线字幕 ──► (若无) ──► Whisper 在线 / 本地 STT
+                               │
+                               ▼
+               [ 3. Phase 1: Outline Generation ]
+        大模型严格 JSON 约束 ──► 全景嵌套章节大纲树 (outline.json)
+                               │
+                               ▼
+                [ 4. Phase 2: In-Memory Slicing ]
+         内存逻辑切片（覆盖全片） ──► 并发多线程 asyncio 提炼
+                               │
+                               ▼
+               [ 5. Phase 3: DFS Assembly Walk ]
+      递归深度优先遍历章节树 ──► 拼装生成 100% 格式化 complete.md 书籍
+```
+
+---
+
+## 🚀 Quick Start (快速开始)
+
+> [!IMPORTANT]  
+> 运行物理机部署前，请确保系统已安装 **FFmpeg** 并将其添加至环境变量。
+
+### 1. 启动 Docker 镜像 (推荐)
+
+项目已完美容器化，可通过 Docker Compose 一键拉起前端、后端及 Redis 缓存服务：
 
 ```bash
-# 前端环境变量
-cp frontend/.env.example frontend/.env
-
-# 后端环境变量
-cp backend/.env.example backend/.env
-# 编辑 backend/.env，至少配置你的 OPENAI_API_KEY
+docker compose up -d --build
 ```
 
-### 2. 启动后端
+这会拉起以下三个服务：
+*   **前端控制台 UI** — `http://localhost:3000` (Next.js SPA)
+*   **后端 API Swagger 文档** — `http://localhost:8000/docs` (FastAPI)
+*   **Redis 高频缓存** — `http://localhost:6379` (自动缓存 duplicate 任务，防止重复计费)
+
+### 2. 物理机手动启动 (本地开发)
+
+#### 后端 (FastAPI)
 
 ```bash
 cd backend
 python -m venv venv
 
-# Windows:
-.\venv\Scripts\pip install -r requirements.txt
-.\venv\Scripts\uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+# 激活虚拟环境 (Windows)
+.\venv\Scripts\Activate.ps1
+# 激活虚拟环境 (macOS/Linux)
+source venv/bin/activate
 
-# macOS/Linux:
-# ./venv/bin/pip install -r requirements.txt
-# ./venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+# 安装依赖并运行
+pip install -r requirements.txt
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-后端服务启动于 http://localhost:8000
-
-### 3. 启动前端
+#### 前端 (Next.js)
 
 ```bash
 cd frontend
@@ -71,69 +113,38 @@ npm ci
 npm run dev
 ```
 
-前端服务启动于 http://localhost:3000
-
 ---
 
-## Docker 部署 (推荐)
+## ⚙️ Configuration (配置规范)
 
-使用 Docker Compose 可以一键部署完整的服务（包括 Redis 缓存）：
+后端通过 `backend/.env` 配置文件进行统一装配。
 
-```bash
-docker compose up -d --build
+> [!TIP]
+> 如果你想极速下载本地 `faster-whisper` 的推理权重，建议在 `.env` 中添加 `HF_TOKEN`，或在运行前执行中转站映射：
+> - **PowerShell**: `$env:HF_ENDPOINT="https://hf-mirror.com"`
+> - **Bash**: `export HF_ENDPOINT=https://hf-mirror.com`
+
+```env
+# 基础大模型配置
+OPENAI_API_KEY=sk-xxxxxx
+OPENAI_COMPATIBLE_API_KEY=sk-xxxxxx
+OPENAI_COMPATIBLE_BASE_URL=https://api.openai.com/v1
+OPENAI_COMPATIBLE_MODEL=gpt-4o-mini
+
+# 本地 Whisper 转录引擎预设
+LOCAL_WHISPER_MODEL=small
+LOCAL_WHISPER_DEVICE=auto
+LOCAL_WHISPER_COMPUTE_TYPE=auto
+
+# 端口与挂载
+BACKEND_PORT=8000
+FRONTEND_URL=http://localhost:3000
+REDIS_URL=redis://localhost:6379
 ```
 
-这会启动三个服务：
-
-- `milanolibrary-frontend` — Next.js (默认映射端口 `3000`)
-- `milanolibrary-backend` — FastAPI (默认映射端口 `8000`)
-- `milanolibrary-redis` — Redis (默认映射端口 `6379`)
-
-> 如需自定义暴露的端口或传入参数，编辑根目录 `.env` 或 `backend/.env` / `frontend/.env` 即可。
-
 ---
 
-## 技术栈
+## 📐 Technology Stack (技术架构)
 
-### 前端技术栈
-
-- **框架**：Next.js 16 (Pages Router) + React 18 + TypeScript (Strict 严格模式)
-- **样式**：Tailwind CSS (复古未来主义定制设计)
-- **表单与校验**：React Hook Form + Zod
-- **Markdown 渲染**：marked-react
-
-### 后端技术栈
-
-- **框架**：FastAPI + Python 3.11+
-- **转录引擎**：OpenAI Whisper API + 本地 `faster-whisper` (CTranslate2)
-- **大模型驱动**：`openai` Python SDK (全面兼容任何第三方 OpenAI 格式的 API 接口)
-- **音视频处理**：`ffmpeg` + `av` / `pydub` (支持分段分片智能总结)
-- **缓存引擎**：Redis / Upstash (支持对高频视频总结进行即时结果复用)
-
----
-
-## API 端点一览
-
-| 方法 | 路径 | 说明 |
-| :--- | :--- | :--- |
-| **GET** | `/health` | 健康检查 |
-| **POST** | `/api/summarize` | URL 视频总结 (Bilibili/YouTube，支持流式) |
-| **POST** | `/api/video/upload` | 本地视频/音频上传，自动通过 Whisper 转录并流式总结 |
-| **DELETE** | `/api/cache` | 彻底清空后端所有总结缓存 |
-| **GET** | `/api/models/local` | 获取本地 Whisper 模型列表及各自的下载/安装状态 |
-| **POST** | `/api/models/local/{name}/download` | 后台触发下载指定的本地 Whisper 模型 |
-| **GET** | `/api/models/local/{name}/status` | 查询指定本地 Whisper 模型的下载进度 |
-
-> 完整的 API 输入/输出定义与示例，请阅读 [docs/API.md](./docs/API.md)。
-
----
-
-## 视觉与交互风格
-
-**复古未来主义极简风 (Retro-futurism Minimalism):**
-
-- **主色调**：背景色为深空黑 `#0a0a0f`，组件边框为暗蓝灰色 `#1e293b`
-- **霓虹点缀**：高亮文字/主按钮采用霓虹青 `#00f0ff`，警告/异常/特殊点缀采用霓虹品红 `#ff00a0`
-- **等宽字体**：全站强制使用 JetBrains Mono 字体
-- **绝对直角**：禁止使用任何圆角 (no `rounded-*` corners) 与渐变/毛玻璃效果
-- **瞬时反馈**：除必要的过渡动效外，消除一切冗余花哨的动画
+*   **Frontend**: Next.js 16 (Pages Router) · React 18 · TypeScript (Strict) · Tailwind CSS · `react-hook-form-persist` · `ReactMarkdown` (GFM + Math + KaTeX)
+*   **Backend**: FastAPI (Async) · Pydantic v2 · CTranslate2 (`faster-whisper`) · FFmpeg / PyAV · Redis / Upstash Redis
