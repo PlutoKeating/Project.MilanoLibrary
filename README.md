@@ -1,17 +1,17 @@
-<p align="center">
-  <h1> 🌌 MilanoLibrary </h1>
+<div align="center">
+  <h1>Milano Library</h1>
   <strong>Database-less Video Vault & Recomposition Compiler</strong><br />
   一个复古未来主义极简风格的、无数据库、本地优先视频知识重组编译器与 Obsidian 原生知识库。
-</p>
+</div>
 
-<p align="center">
+<div align="center">
   <a href="#-paradigm-shift"><strong>设计范式</strong></a> ·
   <a href="#-core-features"><strong>核心特性</strong></a> ·
   <a href="#-compilation-pipeline"><strong>工作原理</strong></a> ·
   <a href="#-quick-start"><strong>快速开始</strong></a> ·
   <a href="./docs/API.md"><strong>API 规范</strong></a> ·
   <a href="./docs/ARCHITECTURE.md"><strong>架构 spec</strong></a>
-</p>
+</div>
 
 ---
 
