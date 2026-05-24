@@ -19,11 +19,15 @@ class TaskStep:
         }
 
 class TaskState:
-    def __init__(self, task_id: str, flow_type: str):
+    def __init__(self, task_id: str, flow_type: str, book_id: Optional[str] = None):
         self.task_id = task_id
         self.flow_type = flow_type  # "url" or "local"
         self.last_updated = time.time()
         self.steps: List[TaskStep] = []
+        self.book_id = book_id
+        self.title: Optional[str] = None
+        self.author: Optional[str] = None
+        self.description: Optional[str] = None
         
         if flow_type == "url":
             self.steps = [
@@ -52,16 +56,20 @@ class TaskState:
             "task_id": self.task_id,
             "flow_type": self.flow_type,
             "last_updated": self.last_updated,
-            "steps": [s.to_dict() for s in self.steps]
+            "steps": [s.to_dict() for s in self.steps],
+            "book_id": self.book_id,
+            "title": self.title,
+            "author": self.author,
+            "description": self.description,
         }
 
 # Global task state storage
 _tasks: Dict[str, TaskState] = {}
 
-def init_task(task_id: str, flow_type: str) -> None:
+def init_task(task_id: str, flow_type: str, book_id: Optional[str] = None) -> None:
     if not task_id:
         return
-    _tasks[task_id] = TaskState(task_id, flow_type)
+    _tasks[task_id] = TaskState(task_id, flow_type, book_id=book_id)
 
 def update_step(
     task_id: Optional[str],
@@ -101,3 +109,27 @@ def get_task_status(task_id: str) -> Optional[Dict[str, Any]]:
     if not task_id or task_id not in _tasks:
         return None
     return _tasks[task_id].to_dict()
+
+def get_task_status_by_book_id(book_id: str) -> Optional[Dict[str, Any]]:
+    # Search for an active/recent task matching book_id
+    for task in _tasks.values():
+        if task.book_id == book_id:
+            return task.to_dict()
+    return None
+
+def update_task_metadata(
+    task_id: Optional[str],
+    title: Optional[str] = None,
+    author: Optional[str] = None,
+    description: Optional[str] = None
+) -> None:
+    if not task_id or task_id not in _tasks:
+        return
+    task = _tasks[task_id]
+    task.last_updated = time.time()
+    if title is not None:
+        task.title = title
+    if author is not None:
+        task.author = author
+    if description is not None:
+        task.description = description

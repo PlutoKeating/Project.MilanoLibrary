@@ -47,21 +47,67 @@ PROMPT_LANGUAGE_MAP = {
 DEFAULT_LANGUAGE = "zh"
 
 
-def get_system_prompt(
+def get_structured_output_system_prompt(
     language: str = "Chinese",
-    should_show_timestamp: bool = False,
     use_chapters: bool = False,
-    metadata: Optional[dict] = None,
 ) -> str:
+    """System prompt when using JSON structured output mode."""
     en_language = PROMPT_LANGUAGE_MAP.get(language, language)
 
     chapter_instruction = ""
     if use_chapters:
         chapter_instruction = (
-            "The video is organized into chapters/sections. "
-            "You MUST preserve the chapter structure in your output. Each chapter should have its own "
-            "section with relevant bullet points. "
+            "The video is organized into chapters. You MUST output each chapter as a separate entry "
+            "in the 'chapters' array, preserving the original chapter titles and order. "
         )
+
+    return (
+        f"You are a meticulous Knowledge Extractor and Transcript Structurer. {chapter_instruction}"
+        f"Your task is to extract ALL specific factual details, concepts, and knowledge points from the video content in {en_language}. "
+        f"DO NOT summarize, abbreviate, or omit any specific information. The length and depth of your output "
+        f"must strictly reflect the actual density of the content. Correct any obvious typos in the transcript, "
+        f"but preserve the speaker's original meaning. "
+        f"Output MUST be valid JSON conforming to the provided schema."
+    )
+
+
+def get_structured_output_user_prompt(
+    title: str,
+    transcript: str,
+    video_config: dict,
+    chapters: Optional[list] = None,
+) -> str:
+    """User prompt for structured JSON output mode."""
+    video_title = " ".join(title.split())
+    video_transcript = " ".join(transcript.split())
+    language = video_config.get("output_language", DEFAULT_LANGUAGE)
+    language_name = LANGUAGE_CODE_TO_ENGLISH_NAME.get(language, language)
+    show_emoji = video_config.get("show_emoji", True)
+
+    chapter_context = ""
+    if chapters and len(chapters) > 0:
+        chapter_context = "\n\nThe video has the following chapters/sections:\n"
+        for ch in chapters:
+            title_ch = ch.get("title", "Untitled")
+            chapter_context += f"  - {title_ch}\n"
+
+    return (
+        f'Title: "{video_title}"\n'
+        f'Transcript: "{video_transcript}"\n'
+        f'{chapter_context}\n'
+        f'Instructions:\n'
+        f'1. Provide a one-sentence overall_summary of the entire video.\n'
+        f'2. Organize the extracted knowledge into chapters (use the provided chapters if available).\n'
+        f'3. Each chapter should have a chapter_title.\n'
+        f'4. Each bullet point should have:\n'
+        f'   - text: the highly detailed extracted knowledge point\n'
+        f'   - emoji: {"an appropriate emoji" if show_emoji else "null"}\n'
+        f'   - children: nested bullet points if sub-concepts exist\n'
+        f'5. Process the transcript thoroughly. Convert all scattered spoken knowledge points into well-structured, highly detailed bullet points. Ensure every specific detail, example, or definition mentioned is fully preserved.\n'
+        f'6. Reply in {language_name} Language.\n'
+        f'7. Output MUST be valid JSON only, no markdown, no extra text.'
+    )
+
 
     metadata_instruction = ""
     if metadata:

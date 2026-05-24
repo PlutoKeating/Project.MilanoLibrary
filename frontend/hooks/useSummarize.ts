@@ -41,17 +41,22 @@ export interface TaskStatus {
   flow_type: 'url' | 'local'
   last_updated: number
   steps: TaskStep[]
+  title?: string
+  author?: string
+  description?: string
 }
 
 export function useSummarize() {
   const [loading, setLoading] = useState(false)
   const [summary, setSummary] = useState('')
   const [taskStatus, setTaskStatus] = useState<TaskStatus | null>(null)
+  const [activeTaskId, setActiveTaskId] = useState<string | null>(null)
   const abortRef = useRef<AbortController | null>(null)
 
   const resetSummary = useCallback(() => {
     setSummary('')
     setTaskStatus(null)
+    setActiveTaskId(null)
     if (abortRef.current) {
       abortRef.current.abort()
       abortRef.current = null
@@ -85,9 +90,8 @@ export function useSummarize() {
     const abortController = new AbortController()
     abortRef.current = abortController
 
-    const taskId = typeof crypto !== 'undefined' && crypto.randomUUID
-      ? crypto.randomUUID()
-      : Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
+    const taskId = videoConfig.videoId.replace(/[^a-zA-Z0-9_-]/g, '_')
+    setActiveTaskId(taskId)
 
     let pollInterval: any = null
 
@@ -108,6 +112,7 @@ export function useSummarize() {
       const snakeCaseVideoConfig = {
         video_id: videoConfig.videoId,
         task_id: taskId,
+        book_id: videoConfig.book_id || videoConfig.bookId,
         service: videoConfig.service,
         page_number: videoConfig.pageNumber,
         enable_stream: videoConfig.enableStream,
@@ -181,9 +186,8 @@ export function useSummarize() {
     const abortController = new AbortController()
     abortRef.current = abortController
 
-    const taskId = typeof crypto !== 'undefined' && crypto.randomUUID
-      ? crypto.randomUUID()
-      : Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
+    const taskId = `${file.name}_${file.size}`.replace(/[^a-zA-Z0-9_-]/g, '_')
+    setActiveTaskId(taskId)
 
     let pollInterval: any = null
 
@@ -203,6 +207,7 @@ export function useSummarize() {
       const snakeCaseVideoConfig = {
         video_id: videoConfig.videoId || '',
         task_id: taskId,
+        book_id: videoConfig.book_id || videoConfig.bookId,
         service: videoConfig.service || 'local-video',
         page_number: videoConfig.pageNumber,
         enable_stream: videoConfig.enableStream,
@@ -274,5 +279,49 @@ export function useSummarize() {
     }
   }, [_readStream])
 
-  return { loading, summary, taskStatus, resetSummary, summarize, uploadAndSummarize }
+  const pollExistingTask = useCallback((taskId: string) => {
+    setLoading(true)
+    setActiveTaskId(taskId)
+
+    let isCleared = false
+    const pollStatus = async () => {
+      try {
+        const res = await fetch(`${getApiBaseUrl()}/api/status/${taskId}`)
+        if (res.ok) {
+          const data = await res.json()
+          if (isCleared) return true
+          setTaskStatus(data)
+          const allDone = data.steps?.every(
+            (step: any) => step.status === 'completed' || step.status === 'failed'
+          )
+          if (allDone) {
+            setLoading(false)
+            return true
+          }
+        } else {
+          if (isCleared) return true
+          setLoading(false)
+          return true
+        }
+      } catch (err) {
+        // ignore
+      }
+      return false
+    }
+
+    pollStatus()
+    const interval = setInterval(async () => {
+      const done = await pollStatus()
+      if (done) {
+        clearInterval(interval)
+      }
+    }, 800)
+
+    return () => {
+      isCleared = true
+      clearInterval(interval)
+    }
+  }, [])
+
+  return { loading, summary, taskStatus, activeTaskId, resetSummary, summarize, uploadAndSummarize, pollExistingTask }
 }

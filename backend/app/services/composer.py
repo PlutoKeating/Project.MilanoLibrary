@@ -18,7 +18,7 @@ def _build_composer_system_prompt(language: str, use_chapters: bool = False, met
         chapter_instruction = (
             "The input contains detailed knowledge extractions from different chapters/sections of the same video. "
             "You MUST preserve the chapter structure in your output. Each chapter should remain "
-            "a separate section. Do NOT merge chapters together. "
+            "a separate entry in the 'chapters' array. Do NOT merge chapters together. "
         )
     else:
         chapter_instruction = (
@@ -46,10 +46,11 @@ def _build_composer_system_prompt(language: str, use_chapters: bool = False, met
     return (
         f"You are a meticulous content editor. {chapter_instruction}"
         f"{metadata_instruction}"
-        f"Your task is to seamlessly combine these adjacent notes into a single, cohesive Markdown document in {en_language}. "
-        f"Retain ALL original markdown details, including deeply nested bullet points and specific facts. "
+        f"Your task is to seamlessly combine these adjacent notes into a single, cohesive structure in {en_language}. "
+        f"Retain ALL original details, including deeply nested bullet points and specific facts. "
         f"You may smooth out transitions and remove edge duplicates between segments, but you MUST NOT summarize, "
-        f"abbreviate, or reduce the length of the extracted knowledge. Every specific detail from the input must be preserved in the final output."
+        f"abbreviate, or reduce the length of the extracted knowledge. Every specific detail from the input must be preserved in the final output. "
+        f"Output MUST be valid JSON conforming to the provided schema."
     )
 
 
@@ -57,8 +58,6 @@ def _build_composer_user_prompt(title: str, segment_summaries: List[str], video_
     language = video_config.get("output_language", "zh")
     language_name = prompts.LANGUAGE_CODE_TO_ENGLISH_NAME.get(language, language)
     show_emoji = video_config.get("show_emoji", True)
-
-    emoji_template_text = "[Emoji] " if show_emoji else ""
 
     # Build segments text with chapter context if available
     segments_text_parts = []
@@ -78,19 +77,23 @@ def _build_composer_user_prompt(title: str, segment_summaries: List[str], video_
     if chapters and len(chapters) > 0:
         chapter_instruction = (
             "IMPORTANT: The input is organized by chapters. Your output MUST also be organized by chapters. "
-            "Use ### Chapter Title for each chapter section. Do NOT flatten into a single list.\n\n"
+            "Output each chapter as a separate entry in the 'chapters' array.\n\n"
         )
 
     prompt = (
-        f"Your output should use the following template:\n## Summary\n## Highlights\n"
-        f"### Chapter Title (if applicable)\n"
-        f"- {emoji_template_text}Bulletpoint\n"
-        f"    - Child points (if applicable)\n\n"
-        f"{chapter_instruction}"
-        f"Your task is to merge the following segment notes into a single coherent document. "
+        f"1. Provide a one-sentence overall_summary of the entire video based on the segment summaries.\n"
+        f"2. Organize the merged knowledge into chapters/sections.\n"
+        f"3. Each chapter should have a chapter_title.\n"
+        f"4. Each bullet point should have:\n"
+        f"   - text: the highly detailed extracted knowledge point\n"
+        f"   - emoji: {'an appropriate emoji' if show_emoji else 'null'}\n"
+        f"   - children: nested bullet points if sub-concepts exist\n"
+        f"5. {chapter_instruction}"
+        f"Your task is to merge the following segment notes into a single coherent structure. "
         f"Ensure every specific detail, example, or definition mentioned is fully preserved. "
         f"Do NOT summarize or omit any information from the segments. "
-        f"Use the text above: {{Title}}.\n\nReply in {language_name} Language."
+        f"Reply in {language_name} Language.\n"
+        f"Output MUST be valid JSON only, conforming to the schema."
     )
 
     return f'Title: "{title}"\n\nSegment Summaries:\n{segments_text}\n\nInstructions: {prompt}'
@@ -144,7 +147,6 @@ async def compose_summary(
         {"role": "user", "content": user_prompt},
     ]
 
-    # Try structured output first
     try:
         response = await client.chat.completions.create(
             model=final_model,
@@ -167,41 +169,8 @@ async def compose_summary(
                 show_timestamp=should_show_timestamp,
                 show_emoji=video_config.get("show_emoji", True),
             )
-    except Exception:
-        pass
-
-    # Fallback to text mode
-    try:
-        response = await client.chat.completions.create(
-            model=final_model,
-            messages=messages,
-            max_tokens=max_tokens,
-            stream=False,
-        )
-        text = response.choices[0].message.content or ""
-        if text.startswith("\n\n"):
-            text = text[2:]
-
-        # Try to parse and re-format
-        parsed = parse_llm_json_output(text)
-        if parsed:
-            should_show_timestamp = user_config.get("should_show_timestamp", False) if user_config else False
-            text = parsed.to_markdown(
-                show_timestamp=should_show_timestamp,
-                show_emoji=video_config.get("show_emoji", True),
-            )
         else:
-            parsed_md = parse_markdown_to_structure(text)
-            if parsed_md and len(parsed_md.chapters) > 0:
-                should_show_timestamp = user_config.get("should_show_timestamp", False) if user_config else False
-                formatted = parsed_md.to_markdown(
-                    show_timestamp=should_show_timestamp,
-                    show_emoji=video_config.get("show_emoji", True),
-                )
-                if formatted and len(formatted) > len(text) * 0.5:
-                    text = formatted
-
-        return text
+            raise Exception("Failed to parse LLM structured composer output as valid video summary JSON")
     except Exception as e:
         return f"Error: {str(e)}"
 
@@ -259,49 +228,30 @@ async def compose_summary_stream(
     ]
 
     try:
-        stream = await client.chat.completions.create(
+        response = await client.chat.completions.create(
             model=final_model,
             messages=messages,
             max_tokens=max_tokens,
-            stream=True,
+            response_format={
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "video_summary",
+                    "schema": SUMMARY_JSON_SCHEMA,
+                    "strict": True,
+                },
+            },
         )
-
-        async for chunk in stream:
-            delta = chunk.choices[0].delta.content if chunk.choices else None
-            if delta:
-                yield delta
-
-    except Exception as e:
-        try:
-            response = await client.chat.completions.create(
-                model=final_model,
-                messages=messages,
-                max_tokens=max_tokens,
-                stream=False,
+        text = response.choices[0].message.content or ""
+        parsed = parse_llm_json_output(text)
+        if parsed:
+            should_show_timestamp = user_config.get("should_show_timestamp", False) if user_config else False
+            markdown = parsed.to_markdown(
+                show_timestamp=should_show_timestamp,
+                show_emoji=video_config.get("show_emoji", True),
             )
-            text = response.choices[0].message.content or ""
-            if text.startswith("\n\n"):
-                text = text[2:]
+            yield markdown
+        else:
+            raise Exception("Failed to parse LLM structured composer output as valid video summary JSON")
+    except Exception as e:
+        yield f"Error: {str(e)}"
 
-            # Try to parse and re-format
-            parsed = parse_llm_json_output(text)
-            if parsed:
-                should_show_timestamp = user_config.get("should_show_timestamp", False) if user_config else False
-                text = parsed.to_markdown(
-                    show_timestamp=should_show_timestamp,
-                    show_emoji=video_config.get("show_emoji", True),
-                )
-            else:
-                parsed_md = parse_markdown_to_structure(text)
-                if parsed_md and len(parsed_md.chapters) > 0:
-                    should_show_timestamp = user_config.get("should_show_timestamp", False) if user_config else False
-                    formatted = parsed_md.to_markdown(
-                        show_timestamp=should_show_timestamp,
-                        show_emoji=video_config.get("show_emoji", True),
-                    )
-                    if formatted and len(formatted) > len(text) * 0.5:
-                        text = formatted
-
-            yield text
-        except Exception as fallback_e:
-            yield f"Error: {str(fallback_e)}"

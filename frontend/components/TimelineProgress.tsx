@@ -1,12 +1,75 @@
-import React from 'react'
+import React, { useEffect, useState } from 'react'
 import { TaskStatus } from '../hooks/useSummarize'
 
-interface TimelineProgressProps {
-  taskStatus: TaskStatus | null
+function getApiBaseUrl() {
+  if (typeof window !== 'undefined') {
+    const stored = window.localStorage.getItem('backend-base-url')
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored)
+        if (parsed) {
+          return typeof parsed === 'string' ? parsed.replace(/\/$/, '') : parsed
+        }
+      } catch (e) {
+        return stored
+      }
+    }
+  }
+  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 }
 
-export function TimelineProgress({ taskStatus }: TimelineProgressProps) {
-  if (!taskStatus) {
+interface TimelineProgressProps {
+  taskStatus?: TaskStatus | null
+  taskId?: string | null
+}
+
+export function TimelineProgress({ taskStatus: propTaskStatus, taskId }: TimelineProgressProps) {
+  const [internalStatus, setInternalStatus] = useState<TaskStatus | null>(null)
+  const [notFound, setNotFound] = useState(false)
+
+  useEffect(() => {
+    if (!taskId) {
+      setInternalStatus(null)
+      setNotFound(false)
+      return
+    }
+
+    let pollInterval: any = null
+    const fetchStatus = async () => {
+      try {
+        const res = await fetch(`${getApiBaseUrl()}/api/status/${taskId}`)
+        if (res.ok) {
+          const data = await res.json()
+          setInternalStatus(data)
+          setNotFound(false)
+          
+          const allDone = data.steps?.every((step: any) => step.status === 'completed' || step.status === 'failed')
+          if (allDone) {
+            clearInterval(pollInterval)
+          }
+        } else if (res.status === 404) {
+          setNotFound(true)
+        }
+      } catch (err) {
+        console.error('Error fetching pipeline status:', err)
+      }
+    }
+
+    fetchStatus()
+    pollInterval = setInterval(fetchStatus, 1000)
+
+    return () => {
+      if (pollInterval) clearInterval(pollInterval)
+    }
+  }, [taskId])
+
+  const status = taskId ? (internalStatus || propTaskStatus) : propTaskStatus
+
+  if (notFound) {
+    return null
+  }
+
+  if (!status) {
     return (
       <div className="mt-8 border border-dashed border-neutral-800 p-4 text-center font-mono text-xs text-neutral-500">
         <span className="animate-pulse">INITIALIZING PIPELINE COMPOSER...</span>
@@ -14,7 +77,7 @@ export function TimelineProgress({ taskStatus }: TimelineProgressProps) {
     )
   }
 
-  const { steps, flow_type } = taskStatus
+  const { steps, flow_type } = status
 
   return (
     <div className="mt-8 border border-cyan-500/30 bg-[#0a0a0f] p-6 font-mono text-sm">

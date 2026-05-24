@@ -54,10 +54,8 @@ async def robust_llm_call(
     raise Exception(f"LLM call failed after {max_retries} attempts. Final error: {str(last_exception)}")
 
 
-def build_user_prompt(title: str, transcript: str, video_config: dict, should_show_timestamp: bool, chapters: Optional[list] = None) -> str:
-    if should_show_timestamp:
-        return prompts.get_user_subtitle_with_timestamp_prompt(title, transcript, video_config, chapters)
-    return prompts.get_user_subtitle_prompt(title, transcript, video_config, chapters)
+def build_user_prompt(title: str, transcript: str, video_config: dict, chapters: Optional[list] = None) -> str:
+    return prompts.get_structured_output_user_prompt(title, transcript, video_config, chapters)
 
 
 def get_small_size_transcripts(new_text_data: list, old_text_data: list) -> str:
@@ -121,7 +119,7 @@ async def generate_summary_stream(
 
     input_text = get_small_size_transcripts(subtitles_array, subtitles_array) if subtitles_array else description_text
 
-    user_prompt = build_user_prompt(title, input_text, video_config, should_show_timestamp, chapters)
+    user_prompt = build_user_prompt(title, input_text, video_config, chapters)
 
     final_model = model_name or video_config.get("model") or settings.openai_compatible_model
     max_tokens = 8192
@@ -145,11 +143,9 @@ async def generate_summary_stream(
     client = create_client(base_url)
     client.api_key = api_key
 
-    system_prompt = prompts.get_system_prompt(
+    system_prompt = prompts.get_structured_output_system_prompt(
         language=video_config.get("output_language", "zh"),
-        should_show_timestamp=should_show_timestamp,
         use_chapters=bool(chapters),
-        metadata=video_config.get("metadata"),
     )
 
     messages = [
@@ -157,110 +153,40 @@ async def generate_summary_stream(
         {"role": "user", "content": user_prompt},
     ]
 
-    # Try structured output first if enabled
-    if use_structured_output:
-        try:
-            response = await client.chat.completions.create(
-                model=final_model,
-                messages=messages,
-                max_tokens=max_tokens,
-                response_format={
-                    "type": "json_schema",
-                    "json_schema": {
-                        "name": "video_summary",
-                        "schema": SUMMARY_JSON_SCHEMA,
-                        "strict": True,
-                    },
-                },
-            )
-            text = response.choices[0].message.content or ""
-            parsed = parse_llm_json_output(text)
-            if parsed:
-                markdown = parsed.to_markdown(
-                    show_timestamp=should_show_timestamp,
-                    show_emoji=video_config.get("show_emoji", True),
-                )
-                yield markdown
-                if markdown:
-                    await set_cached_result(cache_id, markdown)
-                if task_id:
-                    from app.services.status_tracker import update_step
-                    update_step(task_id, "generate_summary", "completed", message="AI 总结生成成功")
-                return
-        except Exception:
-            # Fallback to streaming text
-            pass
-
-    # Standard streaming fallback
     try:
-        stream = await client.chat.completions.create(
+        response = await client.chat.completions.create(
             model=final_model,
             messages=messages,
             max_tokens=max_tokens,
-            stream=True,
+            response_format={
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "video_summary",
+                    "schema": SUMMARY_JSON_SCHEMA,
+                    "strict": True,
+                },
+            },
         )
-
-        full_text = ""
-        async for chunk in stream:
-            delta = chunk.choices[0].delta.content if chunk.choices else None
-            if delta:
-                full_text += delta
-                yield delta
-
-        # Post-process: try to parse and re-format for consistency
-        if full_text:
-            parsed = parse_markdown_to_structure(full_text)
-            if parsed and len(parsed.chapters) > 0:
-                formatted = parsed.to_markdown(
-                    show_timestamp=should_show_timestamp,
-                    show_emoji=video_config.get("show_emoji", True),
-                )
-                # Only replace if we got meaningful structure
-                if formatted and len(formatted) > len(full_text) * 0.5:
-                    full_text = formatted
-            await set_cached_result(cache_id, full_text)
-        if task_id:
-            from app.services.status_tracker import update_step
-            update_step(task_id, "generate_summary", "completed", message="AI 总结生成成功")
-
-    except Exception as e:
-        # Fallback to non-streaming
-        try:
-            response = await client.chat.completions.create(
-                model=final_model,
-                messages=messages,
-                max_tokens=max_tokens,
-                stream=False,
+        text = response.choices[0].message.content or ""
+        parsed = parse_llm_json_output(text)
+        if parsed:
+            markdown = parsed.to_markdown(
+                show_timestamp=should_show_timestamp,
+                show_emoji=video_config.get("show_emoji", True),
             )
-            text = response.choices[0].message.content or ""
-            if text.startswith("\n\n"):
-                text = text[2:]
-
-            # Try structured parse
-            parsed = parse_llm_json_output(text)
-            if parsed:
-                text = parsed.to_markdown(
-                    show_timestamp=should_show_timestamp,
-                    show_emoji=video_config.get("show_emoji", True),
-                )
-            else:
-                parsed_md = parse_markdown_to_structure(text)
-                if parsed_md and len(parsed_md.chapters) > 0:
-                    formatted = parsed_md.to_markdown(
-                        show_timestamp=should_show_timestamp,
-                        show_emoji=video_config.get("show_emoji", True),
-                    )
-                    if formatted and len(formatted) > len(text) * 0.5:
-                        text = formatted
-
-            yield text
-            if text:
-                await set_cached_result(cache_id, text)
+            yield markdown
+            if markdown:
+                await set_cached_result(cache_id, markdown)
             if task_id:
                 from app.services.status_tracker import update_step
                 update_step(task_id, "generate_summary", "completed", message="AI 总结生成成功")
-        except Exception as fallback_e:
-            yield f"Error: {str(fallback_e)}"
+        else:
+            raise Exception("Failed to parse LLM structured output as valid video summary JSON")
+    except Exception as e:
+        yield f"Error: {str(e)}"
+        if task_id:
+            from app.services.status_tracker import update_step
+            update_step(task_id, "generate_summary", "failed", message=f"AI 总结生成失败: {str(e)}")
 
 
 async def generate_summary(
@@ -307,7 +233,7 @@ async def generate_summary(
         return "Error: 501::No subtitle in the video"
 
     input_text = get_small_size_transcripts(subtitles_array, subtitles_array) if subtitles_array else description_text
-    user_prompt = build_user_prompt(title, input_text, video_config, should_show_timestamp, chapters)
+    user_prompt = build_user_prompt(title, input_text, video_config, chapters)
 
     final_model = model_name or video_config.get("model") or settings.openai_compatible_model
     max_tokens = 8192
@@ -329,11 +255,9 @@ async def generate_summary(
     client = create_client(base_url)
     client.api_key = api_key
 
-    system_prompt = prompts.get_system_prompt(
+    system_prompt = prompts.get_structured_output_system_prompt(
         language=video_config.get("output_language", "zh"),
-        should_show_timestamp=should_show_timestamp,
         use_chapters=bool(chapters),
-        metadata=video_config.get("metadata"),
     )
 
     messages = [
@@ -341,72 +265,38 @@ async def generate_summary(
         {"role": "user", "content": user_prompt},
     ]
 
-    # Try structured output first
-    if use_structured_output:
-        try:
-            response = await client.chat.completions.create(
-                model=final_model,
-                messages=messages,
-                max_tokens=max_tokens,
-                response_format={
-                    "type": "json_schema",
-                    "json_schema": {
-                        "name": "video_summary",
-                        "schema": SUMMARY_JSON_SCHEMA,
-                        "strict": True,
-                    },
-                },
-            )
-            text = response.choices[0].message.content or ""
-            parsed = parse_llm_json_output(text)
-            if parsed:
-                markdown = parsed.to_markdown(
-                    show_timestamp=should_show_timestamp,
-                    show_emoji=video_config.get("show_emoji", True),
-                )
-                if markdown:
-                    await set_cached_result(cache_id, markdown)
-                if task_id:
-                    from app.services.status_tracker import update_step
-                    update_step(task_id, "generate_summary", "completed", message="AI 总结生成成功")
-                return markdown
-        except Exception:
-            pass
-
     try:
         response = await client.chat.completions.create(
             model=final_model,
             messages=messages,
             max_tokens=max_tokens,
-            stream=False,
+            response_format={
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "video_summary",
+                    "schema": SUMMARY_JSON_SCHEMA,
+                    "strict": True,
+                },
+            },
         )
         text = response.choices[0].message.content or ""
-        if text.startswith("\n\n"):
-            text = text[2:]
-
-        # Try to parse as JSON first
         parsed = parse_llm_json_output(text)
         if parsed:
-            text = parsed.to_markdown(
+            markdown = parsed.to_markdown(
                 show_timestamp=should_show_timestamp,
                 show_emoji=video_config.get("show_emoji", True),
             )
+            if markdown:
+                await set_cached_result(cache_id, markdown)
+            if task_id:
+                from app.services.status_tracker import update_step
+                update_step(task_id, "generate_summary", "completed", message="AI 总结生成成功")
+            return markdown
         else:
-            # Try to parse markdown and re-format
-            parsed_md = parse_markdown_to_structure(text)
-            if parsed_md and len(parsed_md.chapters) > 0:
-                formatted = parsed_md.to_markdown(
-                    show_timestamp=should_show_timestamp,
-                    show_emoji=video_config.get("show_emoji", True),
-                )
-                if formatted and len(formatted) > len(text) * 0.5:
-                    text = formatted
-
-        if text:
-            await set_cached_result(cache_id, text)
+            raise Exception("Failed to parse LLM structured output as valid video summary JSON")
+    except Exception as e:
         if task_id:
             from app.services.status_tracker import update_step
-            update_step(task_id, "generate_summary", "completed", message="AI 总结生成成功")
-        return text
-    except Exception as e:
+            update_step(task_id, "generate_summary", "failed", message=f"AI 总结生成失败: {str(e)}")
         return f"Error: {str(e)}"
+

@@ -9,7 +9,14 @@ class BilibiliAdapter(BaseAdapter):
     display_name: str = "Bilibili"
     description: str = "哔哩哔哩视频平台解析适配器"
 
+    def __init__(self, url_or_id: str, page_number: Optional[str] = None):
+        super().__init__(url_or_id, page_number)
+        self._cached_metadata: Optional[Dict[str, Any]] = None
+
     async def get_metadata(self) -> Dict[str, Any]:
+        if self._cached_metadata is not None:
+            return self._cached_metadata
+
         from app.services.subtitles import fetch_bilibili_subtitle_urls
         import re
         video_id = self.url_or_id
@@ -27,7 +34,7 @@ class BilibiliAdapter(BaseAdapter):
             cid = data.get("cid")
             aid = data.get("aid")
             duration = data.get("duration", 0)
-            return {
+            res = {
                 "title": title,
                 "uploader": uploader,
                 "description": description,
@@ -35,6 +42,8 @@ class BilibiliAdapter(BaseAdapter):
                 "aid": aid,
                 "duration_seconds": duration,
             }
+            self._cached_metadata = res
+            return res
         except Exception as e:
             print(f"Bilibili get_metadata error: {e}")
             return {"title": "Bilibili Video", "uploader": "Bilibili 博主", "description": ""}

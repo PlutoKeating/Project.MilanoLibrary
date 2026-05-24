@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, UploadFile, File
+from fastapi import APIRouter, HTTPException, UploadFile, File, BackgroundTasks
 from fastapi.responses import StreamingResponse
 from typing import Optional
 from app.models import SummarizeRequest
@@ -80,7 +80,10 @@ async def _detect_chapters_for_url(video_config: dict, user_config: Optional[dic
 
 
 @router.post("/summarize")
-async def summarize_endpoint(req: SummarizeRequest):
+async def summarize_endpoint(
+    req: SummarizeRequest,
+    background_tasks: BackgroundTasks,
+):
     video_config = req.video_config.model_dump()
     user_config = req.user_config.model_dump() if req.user_config else None
 
@@ -92,69 +95,94 @@ async def summarize_endpoint(req: SummarizeRequest):
         user_config["should_show_timestamp"] = False
 
     task_id = video_config.get("task_id")
+    book_id = video_config.get("book_id")
+
+    # Check if a task is already running/pending for this book_id
+    from app.services.status_tracker import get_task_status_by_book_id, init_task, update_step
+    if book_id:
+        existing_status = get_task_status_by_book_id(book_id)
+        if existing_status:
+            steps_done = all(s["status"] in ("completed", "failed") for s in existing_status["steps"])
+            if not steps_done:
+                return {
+                    "task_id": existing_status["task_id"],
+                    "book_id": book_id,
+                    "message": "Pipeline already running in background"
+                }
+
+    # Initialize the task with book_id
     if task_id:
-        from app.services.status_tracker import init_task, update_step
-        init_task(task_id, "url")
+        init_task(task_id, "url", book_id=book_id)
         update_step(task_id, "fetch_metadata", "running", message="正在获取网页视频元数据与平台信息...")
 
-    # 1. Adapt and fetch metadata & play url
-    service = video_config.get("service", "bilibili")
-    video_id = video_config.get("video_id", "")
-    page_number = video_config.get("page_number")
+    # We can write a background task runner that does the actual download and run
+    async def run_url_pipeline_bg():
+        try:
+            # 1. Adapt and fetch metadata & play url
+            service = video_config.get("service", "bilibili")
+            video_id = video_config.get("video_id", "")
+            page_number = video_config.get("page_number")
 
-    from app.services.adapter_manager import get_adapter_instance, download_video_from_adapter
-    adapter = get_adapter_instance(service, video_id, page_number)
+            from app.services.adapter_manager import get_adapter_instance, download_video_from_adapter
+            adapter = get_adapter_instance(service, video_id, page_number)
 
-    metadata = {}
-    if adapter:
-        metadata = await adapter.get_metadata()
-        video_config["metadata"] = metadata
+            metadata = {}
+            if adapter:
+                metadata = await adapter.get_metadata()
+                video_config["metadata"] = metadata
 
-    if task_id:
-        from app.services.status_tracker import update_step
-        update_step(task_id, "fetch_metadata", "completed", message=f"已成功获取平台元数据: {metadata.get('title', '视频')}")
-        update_step(task_id, "download_video", "running", message="正在获取视频下载连接并下载视频流数据...")
+            if task_id:
+                update_step(task_id, "fetch_metadata", "completed", message=f"已成功获取平台元数据: {metadata.get('title', '视频')}")
+                update_step(task_id, "download_video", "running", message="正在获取视频下载连接并下载视频流数据...")
 
-    # Create temporary storage for downloaded video
-    import tempfile
-    from pathlib import Path
-    temp_dir = Path(tempfile.gettempdir()) / "milanolibrary"
-    temp_dir.mkdir(parents=True, exist_ok=True)
+            # Create temporary storage for downloaded video
+            import tempfile
+            from pathlib import Path
+            temp_dir = Path(tempfile.gettempdir()) / "milanolibrary"
+            temp_dir.mkdir(parents=True, exist_ok=True)
 
-    if adapter:
-        # Download video to local path
-        local_path = await download_video_from_adapter(adapter, temp_dir)
-    else:
-        raise HTTPException(status_code=400, detail="Unsupported platform service")
+            if adapter:
+                # Download video to local path
+                local_path = await download_video_from_adapter(adapter, temp_dir)
+            else:
+                raise ValueError("Unsupported platform service")
 
-    if task_id:
-        from app.services.status_tracker import update_step
-        update_step(task_id, "download_video", "completed", message="视频流数据下载完成，即将进行音频提取")
-        update_step(task_id, "extract_audio", "running", message="正在提取并标准化视频音频...")
+            if task_id:
+                update_step(task_id, "download_video", "completed", message="视频流数据下载完成，即将进行音频提取")
+                update_step(task_id, "extract_audio", "running", message="正在提取并标准化视频音频...")
 
-    # Ingest the downloaded video file
-    from app.services.video_ingest import MetaVideo, _probe_media_duration
-    duration = _probe_media_duration(local_path)
-    meta_video = MetaVideo(
-        video_id=video_id,
-        source_type="link",
-        original_url=None,
-        local_path=local_path,
-        title=metadata.get("title", "Video"),
-        duration_seconds=duration,
-        format=Path(local_path).suffix.lstrip("."),
-    )
+            # Ingest the downloaded video file
+            from app.services.video_ingest import MetaVideo, _probe_media_duration
+            duration = _probe_media_duration(local_path)
+            meta_video = MetaVideo(
+                video_id=video_id,
+                source_type="link",
+                original_url=None,
+                local_path=local_path,
+                title=metadata.get("title", "Video"),
+                duration_seconds=duration,
+                format=Path(local_path).suffix.lstrip("."),
+            )
 
-    # Route downloaded video directly through the unified _run_pipeline!
-    from app.routers.upload import _run_pipeline
-    enable_stream = video_config.get("enable_stream", True)
-    return await _run_pipeline(meta_video, video_config, user_config, enable_stream)
+            # Route downloaded video directly through the unified _run_pipeline
+            from app.routers.upload import _run_pipeline
+            await _run_pipeline(meta_video, video_config, user_config, enable_stream=False)
+        except Exception as e:
+            if task_id:
+                update_step(task_id, "compose_summary", "failed", message=f"Background pipeline failed: {e}")
+            print(f"Error in background pipeline: {e}")
+
+    background_tasks.add_task(run_url_pipeline_bg)
+
+    return {"task_id": task_id, "book_id": book_id, "message": "Pipeline started in background"}
 
 
 @router.get("/status/{task_id}")
 async def get_status_endpoint(task_id: str):
-    from app.services.status_tracker import get_task_status
+    from app.services.status_tracker import get_task_status, get_task_status_by_book_id
     status = get_task_status(task_id)
+    if not status:
+        status = get_task_status_by_book_id(task_id)
     if not status:
         raise HTTPException(status_code=404, detail="Task not found")
     return status
