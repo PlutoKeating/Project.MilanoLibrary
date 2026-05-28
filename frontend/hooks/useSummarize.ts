@@ -31,7 +31,7 @@ function parseBackendErrorMessage(message: string) {
 export interface TaskStep {
   id: string
   title: string
-  status: 'pending' | 'running' | 'completed' | 'failed'
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'paused' | 'cancelled' | 'stopped'
   progress: number
   message: string
 }
@@ -41,6 +41,8 @@ export interface TaskStatus {
   flow_type: 'url' | 'local'
   last_updated: number
   steps: TaskStep[]
+  is_paused?: boolean
+  is_stopped?: boolean
   title?: string
   author?: string
   description?: string

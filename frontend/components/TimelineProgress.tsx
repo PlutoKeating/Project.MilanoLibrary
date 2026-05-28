@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { TaskStatus } from '../hooks/useSummarize'
+import { pausePipeline, stopPipeline } from '../lib/api'
 
 function getApiBaseUrl() {
   if (typeof window !== 'undefined') {
@@ -26,6 +27,7 @@ interface TimelineProgressProps {
 export function TimelineProgress({ taskStatus: propTaskStatus, taskId }: TimelineProgressProps) {
   const [internalStatus, setInternalStatus] = useState<TaskStatus | null>(null)
   const [notFound, setNotFound] = useState(false)
+  const [actionLoading, setActionLoading] = useState(false)
 
   useEffect(() => {
     if (!taskId) {
@@ -43,7 +45,10 @@ export function TimelineProgress({ taskStatus: propTaskStatus, taskId }: Timelin
           setInternalStatus(data)
           setNotFound(false)
           
-          const allDone = data.steps?.every((step: any) => step.status === 'completed' || step.status === 'failed')
+          const allDone = data.steps?.every((step: any) => step.status === 'completed' || step.status === 'failed') ||
+                          data.is_paused ||
+                          data.is_stopped ||
+                          data.steps?.some((step: any) => step.status === 'paused' || step.status === 'cancelled' || step.status === 'stopped')
           if (allDone) {
             clearInterval(pollInterval)
           }
@@ -63,6 +68,43 @@ export function TimelineProgress({ taskStatus: propTaskStatus, taskId }: Timelin
     }
   }, [taskId])
 
+  const handlePause = async () => {
+    if (!taskId) return
+    setActionLoading(true)
+    try {
+      await pausePipeline(taskId)
+      const res = await fetch(`${getApiBaseUrl()}/api/status/${taskId}`)
+      if (res.ok) {
+        const data = await res.json()
+        setInternalStatus(data)
+      }
+    } catch (err: any) {
+      alert(`PAUSE ERROR: ${err.message || err}`)
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  const handleStop = async () => {
+    if (!taskId) return
+    if (!confirm('ARE YOU SURE YOU WANT TO STOP THE PIPELINE AND CLEAR ALL RUNTIME CACHE?')) {
+      return
+    }
+    setActionLoading(true)
+    try {
+      await stopPipeline(taskId)
+      const res = await fetch(`${getApiBaseUrl()}/api/status/${taskId}`)
+      if (res.ok) {
+        const data = await res.json()
+        setInternalStatus(data)
+      }
+    } catch (err: any) {
+      alert(`STOP ERROR: ${err.message || err}`)
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
   const status = taskId ? (internalStatus || propTaskStatus) : propTaskStatus
 
   if (notFound) {
@@ -79,11 +121,21 @@ export function TimelineProgress({ taskStatus: propTaskStatus, taskId }: Timelin
 
   const { steps, flow_type } = status
 
+  const isPipelineRunning = !!taskId && !!status && status.steps?.some(step => step.status === 'running') && !status.is_paused && !status.is_stopped
+
   return (
     <div className="mt-8 border border-cyan-500/30 bg-[#0a0a0f] p-6 font-mono text-sm">
       <div className="mb-4 flex items-center justify-between border-b border-cyan-500/20 pb-2">
         <span className="text-xs text-neutral-500">PIPELINE MONITOR [FLOW: {flow_type.toUpperCase()}]</span>
-        <span className="animate-pulse text-xs text-cyan-400 font-semibold">ONLINE</span>
+        {status.is_paused ? (
+          <span className="text-xs text-yellow-500 font-semibold uppercase">PAUSED</span>
+        ) : status.is_stopped ? (
+          <span className="text-xs text-neutral-500 font-semibold uppercase">STOPPED</span>
+        ) : isPipelineRunning ? (
+          <span className="animate-pulse text-xs text-cyan-400 font-semibold uppercase">ONLINE</span>
+        ) : (
+          <span className="text-xs text-fuchsia-500 font-semibold uppercase">FINISHED</span>
+        )}
       </div>
 
       <div className="relative pl-6">
@@ -95,6 +147,8 @@ export function TimelineProgress({ taskStatus: propTaskStatus, taskId }: Timelin
           const isRunning = step.status === 'running'
           const isCompleted = step.status === 'completed'
           const isFailed = step.status === 'failed'
+          const isPaused = step.status === 'paused'
+          const isCancelled = step.status === 'cancelled' || step.status === 'stopped'
 
           let statusSymbol = '[ ]'
           let statusClass = 'text-neutral-500'
@@ -115,6 +169,16 @@ export function TimelineProgress({ taskStatus: propTaskStatus, taskId }: Timelin
             statusClass = 'text-red-500 font-bold'
             borderClass = 'border-red-500'
             bgClass = 'bg-red-950/10'
+          } else if (isPaused) {
+            statusSymbol = '[||]'
+            statusClass = 'text-yellow-500 font-bold'
+            borderClass = 'border-yellow-500'
+            bgClass = 'bg-yellow-950/10'
+          } else if (isCancelled) {
+            statusSymbol = '[#]'
+            statusClass = 'text-neutral-500 font-bold'
+            borderClass = 'border-neutral-800'
+            bgClass = 'bg-neutral-950/10'
           }
 
           return (
@@ -125,7 +189,7 @@ export function TimelineProgress({ taskStatus: propTaskStatus, taskId }: Timelin
                 style={{ transform: 'translateX(-1.5px)' }}
               />
 
-              <div className={`border-l-2 pl-4 ${isRunning ? 'border-cyan-500' : isCompleted ? 'border-fuchsia-500' : isFailed ? 'border-red-500' : 'border-neutral-800'}`}>
+              <div className={`border-l-2 pl-4 ${isRunning ? 'border-cyan-500' : isCompleted ? 'border-fuchsia-500' : isFailed ? 'border-red-500' : isPaused ? 'border-yellow-500' : isCancelled ? 'border-neutral-800/50' : 'border-neutral-800'}`}>
                 <div className="flex items-center justify-between">
                   <span className={`${statusClass} text-xs tracking-wider font-semibold uppercase`}>
                     {statusSymbol} {step.title}
@@ -136,7 +200,7 @@ export function TimelineProgress({ taskStatus: propTaskStatus, taskId }: Timelin
                 </div>
 
                 {step.message && (
-                  <div className={`mt-1.5 text-xs ${isRunning ? 'text-cyan-300' : isFailed ? 'text-red-400' : 'text-neutral-400'}`}>
+                  <div className={`mt-1.5 text-xs ${isRunning ? 'text-cyan-300' : isFailed ? 'text-red-400' : isPaused ? 'text-yellow-400' : 'text-neutral-400'}`}>
                     &gt; {step.message}
                   </div>
                 )}
@@ -155,6 +219,25 @@ export function TimelineProgress({ taskStatus: propTaskStatus, taskId }: Timelin
           )
         })}
       </div>
+
+      {isPipelineRunning && (
+        <div className="mt-6 flex gap-4 border-t border-cyan-500/20 pt-4">
+          <button
+            onClick={handlePause}
+            disabled={actionLoading}
+            className="border border-yellow-500 bg-[#0a0a0f] px-4 py-2 text-xs text-yellow-500 font-bold hover:bg-yellow-950/20 active:bg-yellow-950/40 transition-colors disabled:opacity-50"
+          >
+            // PAUSE PIPELINE //
+          </button>
+          <button
+            onClick={handleStop}
+            disabled={actionLoading}
+            className="border border-fuchsia-500 bg-[#0a0a0f] px-4 py-2 text-xs text-fuchsia-500 font-bold hover:bg-fuchsia-950/20 active:bg-fuchsia-950/40 transition-colors disabled:opacity-50"
+          >
+            // STOP & CLEAR CACHE //
+          </button>
+        </div>
+      )}
     </div>
   )
 }
