@@ -1,3 +1,0 @@
-include:
-  - path: ./backend/docker-compose.yml
-  - path: ./frontend/docker-compose.yml
