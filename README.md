@@ -73,18 +73,26 @@ MilanoLibrary 将视频的“存”与“重组”抽象为一条高度自动化
 > [!IMPORTANT]  
 > 运行物理机部署前，请确保系统已安装 **FFmpeg** 并将其添加至环境变量。
 
-### 1. 启动 Docker 镜像 (推荐)
+### 1. 启动 Docker 镜像 (推荐前后端分离部署)
 
-项目已完美容器化，可通过 Docker Compose 一键拉起前端、后端及 Redis 缓存服务：
+项目已完美分离容器化，可分别进入前端和后端目录，通过 Docker Compose 启动各自服务：
 
+#### 后端与缓存 (FastAPI + Redis)
 ```bash
+cd backend
 docker compose up -d --build
 ```
-
-这会拉起以下三个服务：
-*   **前端控制台 UI** — `http://localhost:3000` (Next.js SPA)
+这会拉起以下两个服务：
 *   **后端 API Swagger 文档** — `http://localhost:8000/docs` (FastAPI)
 *   **Redis 高频缓存** — `http://localhost:6379` (自动缓存 duplicate 任务，防止重复计费)
+
+#### 前端控制台 (Next.js)
+```bash
+cd frontend
+docker compose up -d --build
+```
+这会拉起以下服务：
+*   **前端控制台 UI** — `http://localhost:3000` (Next.js SPA)
 
 ### 2. 物理机手动启动 (本地开发)
 

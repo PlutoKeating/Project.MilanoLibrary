@@ -31,12 +31,15 @@ pip install -r requirements.txt
 uvicorn app.main:app --host 0.0.0.0 --port 8000
 
 # Docker
-docker compose up -d
+# Backend and Redis:
+cd backend && docker compose up -d
+# Frontend:
+cd frontend && docker compose up -d
 
 ## Port Configuration
 
 - Local dev: edit `backend/.env` (`PORT`) and `frontend/.env` (`PORT`, `NEXT_PUBLIC_API_URL`)
-- Docker: edit root `.env` (`BACKEND_PORT`, `FRONTEND_PORT`)
+- Docker: edit `backend/.env` (`BACKEND_PORT`) and `frontend/.env` (`FRONTEND_PORT`, `NEXT_PUBLIC_API_URL`)
 ```
 
 ## Coding Style

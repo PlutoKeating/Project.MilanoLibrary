@@ -66,17 +66,26 @@ FRONTEND_PORT=3000
 
 ---
 
-## 三、Docker Compose 一键部署 (推荐)
+## 三、Docker Compose 部署 (推荐前后端分离部署)
 
-在项目根目录下执行以下命令，一键编译并启动前端、后端、Redis 缓存服务：
+项目已完美分离容器化，可分别进入前端和后端目录，通过 Docker Compose 启动各自服务：
+
+### 1. 启动后端与缓存 (FastAPI + Redis)
 ```bash
+cd backend
 docker compose up -d --build
 ```
-
-### 服务运行地址：
-- **前端控制台 UI**: [http://localhost:3000](http://localhost:3000)
+这会拉起以下服务：
 - **后端 Swagger API 交互文档**: [http://localhost:8000/docs](http://localhost:8000/docs)
 - **后端健康检测**: [http://localhost:8000/health](http://localhost:8000/health)
+
+### 2. 启动前端控制台 (Next.js)
+```bash
+cd frontend
+docker compose up -d --build
+```
+这会拉起以下服务：
+- **前端控制台 UI**: [http://localhost:3000](http://localhost:3000)
 
 ---
 
@@ -154,7 +163,7 @@ npm run dev
 - 手动启动后端时，请务必保证执行命令行的终端下运行 `ffmpeg -version` 和 `ffprobe -version` 无报错。Windows 系统推荐安装后将其 bin 目录添加进系统高级环境变量 PATH，并**重启终端**以生效。
 
 ### 2. 磁盘文件浏览器 (Browse) 无法访问某些路径
-- 容器化部署时，出于安全性考虑，系统默认只能浏览和挂载挂载卷挂载出的目录（如 Docker 的 `/host_home`）。如需访问整个宿主机，请确保在根目录 `.env` 或 `docker-compose.yml` 中正确配置了宿主机家路径到容器内部的映射。
+- 容器化部署时，出于安全性考虑，系统默认只能浏览和挂载挂载卷挂载出的目录（如 Docker 的 `/host_home`）。如需访问整个宿主机，请确保在 `backend` 目录下的 `.env` 或 `docker-compose.yml` 中正确配置了宿主机家路径到容器内部的映射。
 
 ### 3. 本地 Whisper 模型下载极慢或失败
 - 默认需要从 Hugging Face 镜像拉取权重，国内网络可能存在延迟。
