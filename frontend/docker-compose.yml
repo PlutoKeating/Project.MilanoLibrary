@@ -1,5 +1,5 @@
 services:
-  frontend:
+  MilanoLibrary_frontend:
     image: milanolibrary_frontend
     build:
       context: .
