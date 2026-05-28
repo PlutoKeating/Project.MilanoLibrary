@@ -26,6 +26,10 @@ class Settings(BaseSettings):
     # Server
     backend_port: int = 8000
 
+    # Auth Settings
+    auth_username: str = "admin"
+    auth_password: str = "admin123"
+
     # CORS
     frontend_url: str = "http://localhost:3000"
 

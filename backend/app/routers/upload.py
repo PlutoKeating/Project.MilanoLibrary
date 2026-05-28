@@ -185,6 +185,31 @@ async def _run_pipeline(
     user_config: Optional[dict],
     enable_stream: bool,
 ):
+    from app.services.status_tracker import PipelinePausedException, PipelineStoppedException
+    task_id = video_config.get("task_id")
+    try:
+        return await _run_pipeline_impl(meta_video, video_config, user_config, enable_stream)
+    except PipelinePausedException:
+        print(f"Pipeline {task_id} paused cleanly.")
+        return
+    except PipelineStoppedException:
+        print(f"Pipeline {task_id} stopped cleanly.")
+        return
+    except Exception as e:
+        if task_id:
+            try:
+                from app.services.status_tracker import update_step
+                update_step(task_id, "compose_summary", "failed", message=f"Pipeline failed: {e}")
+            except Exception:
+                pass
+        print(f"Error in pipeline: {e}")
+
+async def _run_pipeline_impl(
+    meta_video,
+    video_config: dict,
+    user_config: Optional[dict],
+    enable_stream: bool,
+):
     """Optimized pipeline: Fetch/transcribe once → LLM Outline (Phase 1) → Parallel Leaf Summarize (Phase 2) → DFS Assemble (Phase 3)."""
     task_id = video_config.get("task_id")
     api_key = user_config.get("user_key") if user_config else None
@@ -606,7 +631,7 @@ async def video_upload_endpoint(
                 }
 
     if task_id:
-        init_task(task_id, "local", book_id=book_id)
+        init_task(task_id, "local", book_id=book_id, video_config=video_config_dict)
         update_step(task_id, "upload_file", "running", message=f"正在接收并保存上传文件: {file.filename}...")
 
     # Save uploaded file to a temp location first

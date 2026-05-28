@@ -112,11 +112,12 @@ async def summarize_endpoint(
 
     # Initialize the task with book_id
     if task_id:
-        init_task(task_id, "url", book_id=book_id)
+        init_task(task_id, "url", book_id=book_id, video_config=video_config)
         update_step(task_id, "fetch_metadata", "running", message="正在获取网页视频元数据与平台信息...")
 
     # We can write a background task runner that does the actual download and run
     async def run_url_pipeline_bg():
+        from app.services.status_tracker import PipelinePausedException, PipelineStoppedException
         try:
             # 1. Adapt and fetch metadata & play url
             service = video_config.get("service", "bilibili")
@@ -167,9 +168,15 @@ async def summarize_endpoint(
             # Route downloaded video directly through the unified _run_pipeline
             from app.routers.upload import _run_pipeline
             await _run_pipeline(meta_video, video_config, user_config, enable_stream=False)
+        except (PipelinePausedException, PipelineStoppedException) as e:
+            print(f"Background pipeline {task_id} stopped or paused cleanly: {type(e).__name__}")
+            return
         except Exception as e:
             if task_id:
-                update_step(task_id, "compose_summary", "failed", message=f"Background pipeline failed: {e}")
+                try:
+                    update_step(task_id, "compose_summary", "failed", message=f"Background pipeline failed: {e}")
+                except Exception:
+                    pass
             print(f"Error in background pipeline: {e}")
 
     background_tasks.add_task(run_url_pipeline_bg)
@@ -186,6 +193,24 @@ async def get_status_endpoint(task_id: str):
     if not status:
         raise HTTPException(status_code=404, detail="Task not found")
     return status
+
+
+@router.post("/pipeline/pause/{task_id}")
+async def pause_pipeline_endpoint(task_id: str):
+    from app.services.status_tracker import pause_task
+    success = pause_task(task_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return {"success": True, "message": f"Pipeline {task_id} paused successfully"}
+
+
+@router.post("/pipeline/stop/{task_id}")
+async def stop_pipeline_endpoint(task_id: str):
+    from app.services.status_tracker import stop_task
+    success = stop_task(task_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return {"success": True, "message": f"Pipeline {task_id} stopped and runtime cache cleared"}
 
 
 @router.get("/adapters")

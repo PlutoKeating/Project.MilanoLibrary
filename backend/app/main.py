@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
-from app.routers import summarize, cache, upload, models, books, notes
+from app.routers import summarize, cache, upload, models, books, notes, auth
 
 app = FastAPI(
     title="MilanoLibrary Backend",
@@ -19,6 +19,7 @@ app.add_middleware(
 )
 
 # Routers
+app.include_router(auth.router)
 app.include_router(summarize.router)
 app.include_router(cache.router)
 app.include_router(upload.router)
