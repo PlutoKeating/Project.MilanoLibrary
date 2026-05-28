@@ -1,3 +1,5 @@
+name: MilanoLibrary_frontend
+
 services:
   MilanoLibrary_frontend:
     image: milanolibrary_frontend
