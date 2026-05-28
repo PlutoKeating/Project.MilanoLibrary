@@ -1,6 +1,6 @@
 services:
   frontend:
-    image: MilanoLibrary_frontend
+    image: milanolibrary_frontend
     build:
       context: .
       dockerfile: Dockerfile
