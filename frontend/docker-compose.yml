@@ -1,15 +1,14 @@
 services:
   frontend:
+    image: MilanoLibrary_frontend
     build:
       context: .
       dockerfile: Dockerfile
       pull: false
       args:
         - NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
-    container_name: milanolibrary-frontend
+    container_name: MilanoLibrary_frontend
     ports:
       - "${FRONTEND_PORT:-3000}:3000"
     env_file:
       - .env
-    depends_on:
-      - backend
